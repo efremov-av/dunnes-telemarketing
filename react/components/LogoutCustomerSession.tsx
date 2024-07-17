@@ -52,9 +52,7 @@ const LogoutCustomerSession = (props: Props) => {
 
   const getClientName = (client: any) =>
     !!client
-      ? client.name.includes('null')
-        ? client.email.slice(0, client.email.indexOf('@'))
-        : client.name
+      ? client.email
       : null
 
   const getHeader = (mobile: boolean) => {
@@ -92,18 +90,18 @@ const LogoutCustomerSession = (props: Props) => {
         <div className={`${handles.logoutInfoContainer} bg-base w-100 pt7 pb5 ph5`}>
           <div className={`${handles.logoutForm} c-disabled`}>
             <div className="w-100 bw1 bb b--muted-5 flex-wrap">
-              <div
+              {/* <div
                 className={`${handles.clientName} w-100 t-heading-5 center pb5 c-on-base`}
               >
                 {clientName}
-              </div>
+              </div> */}
 
               <div className={`${handles.emailContainer} w-100 flex flex-wrap t-small`}>
                 <div className={`${handles.emailField} tl pb5 pr2`}>Email</div>
                 <div className={`${handles.emailValue} pb5 pl2 c-muted-1`}>{client.email}</div>
               </div>
 
-              <div className={`${handles.documentContainer} w-100 flex flex-wrap t-small`}>
+              {/* <div className={`${handles.documentContainer} w-100 flex flex-wrap t-small`}>
                 <div className={`${handles.documentField} tl pb5 pr2`}>
                   <FormattedMessage id="store/telemarketing-logout.document-label" />
                 </div>
@@ -115,7 +113,7 @@ const LogoutCustomerSession = (props: Props) => {
                   <FormattedMessage id="store/telemarketing-logout.phone-label" />
                 </div>
                 <div className={`${handles.phoneValue} pb5 pl2 c-muted-1`}>{client.phone}</div>
-              </div>
+              </div> */}
             </div>
             <div className={`${handles.logoutButtonsContainer} mt5`}>
               {/* <Link page="store.account">

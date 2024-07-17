@@ -44,6 +44,9 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
             console.log('changeToAnonymousUser', {res})
             setOrderForm({...orderForm, clientProfileData: null})
           })
+          .catch((err) => {
+            console.error('changeToAnonymousUser', err.message)
+          })
       })
       .finally(() => {
         setloadingImpersonate(false)
@@ -64,17 +67,40 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
           email
           })
           .then(async () => {
-
-            await axios.post(`/api/checkout/pub/orderForm/${orderFormId}/attachments/shippingData`,
-              {
-                selectedAddresses: []
+            const profile = await axios.get('/api/checkout/pub/profiles', {
+              params: {
+                email
               }
-            ).then(res => {
-              console.log('shippingData', {res})
-              setOrderForm(res.data)
             })
 
+            if (profile?.data) {
+              console.log('profile', profile.data)
+
+              const contactInformation = profile.data.contactInformation?.map((contact: any) => {
+                return {
+                  id: contact.id
+                }
+              })
+
+              console.log({contactInformation})
+
+              await axios.post(`/api/checkout/pub/orderForm/${orderFormId}/attachments/shippingData`,
+                {
+                  selectedAddresses: [],
+                  contactInformation 
+                }
+              ).then(res => {
+                console.log('shippingData', {res})
+                setOrderForm(res.data)
+              })
+              .catch((err) => {
+                console.error('shippingData', err.message)
+              })
+            }
           })
+      })
+      .catch((err) => {
+        console.error('clientProfileData', err.message)
       })
       .finally(() => {
         setloadingImpersonate(false)
