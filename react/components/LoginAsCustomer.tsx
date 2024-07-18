@@ -12,6 +12,7 @@ const CSS_HANDLES = [
   'loginForm',
   'loginFormMessage',
   'emailInput',
+  'zipCodeInput',
   'loginButton',
   'loginAsText',
   'popoverHeader',
@@ -22,10 +23,14 @@ interface Props {
   attendantEmail: string
   /** Input value */
   emailInput: string
+  /** Input value */
+  zipCodeInput: string
   /** Sets the state of the parent component with new email value */
   onInputChange: (s: string) => void
+  /** Function to set the zipCodeInput value */
+  onZipCodeInputChange: (s: string) => void
   /** Calls the impersonate on the parent component */
-  onImpersonate: (s: string) => void
+  onImpersonate: (s: string, zipCode: string) => void
   /** Loading status */
   loading: boolean
   /** If is mobile or not */
@@ -37,8 +42,10 @@ const LoginAsCustomer = ({
   attendantEmail,
   onInputChange,
   onImpersonate,
+  onZipCodeInputChange,
   loading,
   emailInput,
+  zipCodeInput,
   mobile,
 }: Props) => {
   const handles = useCssHandles(CSS_HANDLES)
@@ -56,9 +63,9 @@ const LoginAsCustomer = ({
 
   const handleKeyPress = useCallback(
     (event: any) => {
-      event.key === 'Enter' && onImpersonate(emailInput)
+      event.key === 'Enter' && onImpersonate(emailInput, zipCodeInput)
     },
-    [emailInput]
+    [emailInput, zipCodeInput]
   )
 
   return (
@@ -89,9 +96,17 @@ const LoginAsCustomer = ({
                 onKeyPress={handleKeyPress}
               />
             </div>
+            <div className={`${handles.zipCodeInput} mb5`}>
+              <Input
+                value={zipCodeInput}
+                onChange={onZipCodeInputChange}
+                placeholder={'Zip code'}
+                onKeyPress={handleKeyPress}
+              />
+            </div>
             <Button
               size="regular"
-              onClick={() => onImpersonate(emailInput)}
+              onClick={() => onImpersonate(emailInput, zipCodeInput)}
               isLoading={loading}
             >
               <FormattedMessage id="store/telemarketing-login.button" />

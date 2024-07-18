@@ -23,14 +23,18 @@ interface Props {
   client?: Client
   /** Email input value */
   emailInput: string
+  /** Zip Code input value */
+  zipCodeInput: string
   /** Loading status */
   loading: boolean
   /** Function to depersonify the impersonated customer */
   onDepersonify: () => any
   /** Function to set the emailInput value */
   onInputChange: (s: string) => void
+  /** Function to set the zipCodeInput value */
+  onZipCodeInputChange: (s: string) => void
   /** Function to impersonate */
-  onImpersonate: (s: string) => void
+  onImpersonate: (s: string, zipCode: string) => void
   /** Children */
   readonly children?: ReactNode
 }
@@ -40,9 +44,11 @@ const Telemarketing = ({
   client,
   loading,
   emailInput,
+  zipCodeInput,
   onInputChange,
   onImpersonate,
   onDepersonify,
+  onZipCodeInputChange,
   attendantEmail,
 }: Props) => {
   const { isMobile } = useDevice()
@@ -92,8 +98,10 @@ const Telemarketing = ({
             <LoginAsCustomer
               loading={loading}
               emailInput={emailInput}
+              zipCodeInput={zipCodeInput}
               onInputChange={onInputChange}
               onImpersonate={onImpersonate}
+              onZipCodeInputChange={onZipCodeInputChange}
               attendantEmail={attendantEmail}
               mobile={isMobile}
             />

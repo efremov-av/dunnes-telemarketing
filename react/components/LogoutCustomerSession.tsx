@@ -1,5 +1,5 @@
 import classnames from 'classnames'
-import React, { ReactNode, useCallback, useMemo } from 'react'
+import React, { ReactNode, useCallback } from 'react'
 import { useCssHandles } from 'vtex.css-handles'
 // import { Link } from 'vtex.render-runtime'
 import { IconAssistantSales, IconProfile } from 'vtex.store-icons'
@@ -50,11 +50,6 @@ const LogoutCustomerSession = (props: Props) => {
   const { client, loading, onDepersonify, attendantEmail, mobile } = props
   const handles = useCssHandles(CSS_HANDLES)
 
-  const getClientName = (client: any) =>
-    !!client
-      ? client.email
-      : null
-
   const getHeader = (mobile: boolean) => {
     const headerClasses = classnames(
       handles.logoutHeader,
@@ -64,13 +59,12 @@ const LogoutCustomerSession = (props: Props) => {
     return (
       <div className={headerClasses}>
         <IconProfile />
-        <div className={`pa2 ${handles.clientNameBar} w-100`}>{clientName}</div>
+        <div className={`pa2 ${handles.clientNameBar} w-100`}>{client?.email}</div>
       </div>
     )
   }
 
-  const clientName = useMemo(() => getClientName(client), [client])
-  const renderHeader = useCallback(() => getHeader(mobile), [mobile])
+  const renderHeader = useCallback(() => getHeader(mobile), [mobile, client])
 
   return (
     <div className={`${handles.logout} ${mobile && 'w-50'}`}>

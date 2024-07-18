@@ -1,5 +1,5 @@
 import { compose } from 'ramda'
-import React, { FC, useState } from 'react'
+import React, { FC, useEffect, useState } from 'react'
 import { graphql } from 'react-apollo'
 import sessionQuery from 'vtex.store-resources/QuerySession'
 import processSession from '../utils/processSession'
@@ -18,9 +18,18 @@ interface Props {
 
 const TelemarketingContainer: FC<Props> = ({session}) => {
   const [emailInput, setEmailInput] = useState<string>('')
+  const [zipCodeInput, setZipCodeInput] = useState<string>('')
   const [loadingImpersonate, setloadingImpersonate] = useState<boolean>(false)
 
   const { orderForm, setOrderForm, loading } = useOrderForm()
+
+  useEffect(() => {
+    axios.get('/api/checkout/pub/orderForm', { withCredentials: true })
+    .then(res => {
+      console.log('RES', res.data)
+      setOrderForm(res.data)
+    })
+  }, [])
 
   const processedSession = processSession(session)
 
@@ -32,10 +41,14 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
     setEmailInput(event.target.value)
   }
 
+  const handleZipCodeInputChange = (event: any) => {
+    setZipCodeInput(event.target.value)
+  }
+
   const handleDepersonify = () => {
     setloadingImpersonate(true)
 
-    axios.get('/api/checkout/pub/orderForm')
+    axios.get('/api/checkout/pub/orderForm?forceNewCart=true')
       .then(async res => {
         const { orderFormId } = res?.data
 
@@ -53,50 +66,44 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
       })
   }
 
-  const handleImpersonate = (email: string) => {
+  const handleImpersonate = (email: string, zipCode: string) => {
     setloadingImpersonate(true)
 
     console.log('handleImpersonate', email)
 
-    axios.get('/api/checkout/pub/orderForm')
+    axios.get('/api/checkout/pub/orderForm?forceNewCart=true')
       .then(async res => {
         const { orderFormId } = res?.data
+
+        await axios.patch(`/api/checkout/pub/orderForm/${orderFormId}/profile`, {
+          ignoreProfileData: true
+        })
 
         await axios.post(`/api/checkout/pub/orderForm/${orderFormId}/attachments/clientProfileData`, 
           {
           email
           })
           .then(async () => {
-            const profile = await axios.get('/api/checkout/pub/profiles', {
-              params: {
-                email
+            const country = JSON.parse(localStorage.getItem("selectedCountry") ?? '')
+
+            await axios.post(`/api/checkout/pub/orderForm/${orderFormId}/attachments/shippingData`,
+              {
+                clearAddressIfPostalCodeNotFound: false,
+                selectedAddresses: [
+                  {
+                    addressType: "delivery",
+                    postalCode: zipCode,
+                    country: country?.iso_code
+                  }
+                ]
               }
+            ).then(res => {
+              console.log('shippingData', {res})
+              setOrderForm(res.data)
             })
-
-            if (profile?.data) {
-              console.log('profile', profile.data)
-
-              const contactInformation = profile.data.contactInformation?.map((contact: any) => {
-                return {
-                  id: contact.id
-                }
-              })
-
-              console.log({contactInformation})
-
-              await axios.post(`/api/checkout/pub/orderForm/${orderFormId}/attachments/shippingData`,
-                {
-                  selectedAddresses: [],
-                  contactInformation 
-                }
-              ).then(res => {
-                console.log('shippingData', {res})
-                setOrderForm(res.data)
-              })
-              .catch((err) => {
-                console.error('shippingData', err.message)
-              })
-            }
+            .catch((err) => {
+              console.error('shippingData', err.message)
+            })
           })
       })
       .catch((err) => {
@@ -125,10 +132,12 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
       client={client}
       loading={loadingImpersonate}
       emailInput={emailInput}
+      zipCodeInput={zipCodeInput}
       attendantEmail={attendantEmail}
       onImpersonate={handleImpersonate}
       onDepersonify={handleDepersonify}
       onInputChange={handleInputChange}
+      onZipCodeInputChange={handleZipCodeInputChange}
     />
   )
 }
