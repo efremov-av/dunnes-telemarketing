@@ -1,5 +1,5 @@
 import { compose } from 'ramda'
-import React, { FC, useState } from 'react'
+import React, { FC, useEffect, useState } from 'react'
 import { graphql } from 'react-apollo'
 import sessionQuery from 'vtex.store-resources/QuerySession'
 import processSession from '../utils/processSession'
@@ -22,6 +22,13 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
 
   const { orderForm, setOrderForm, loading } = useOrderForm()
 
+  useEffect(() => {
+    axios.get('/api/checkout/pub/orderForm', { withCredentials: true })
+    .then(res => {
+      setOrderForm(res.data)
+    })
+  }, [])
+
   const processedSession = processSession(session)
 
   if (!processedSession?.canImpersonate || loading) {
@@ -35,14 +42,13 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
   const handleDepersonify = () => {
     setloadingImpersonate(true)
 
-    axios.get('/api/checkout/pub/orderForm')
+    axios.get('/api/checkout/pub/orderForm?forceNewCart=true')
       .then(async res => {
         const { orderFormId } = res?.data
 
         await axios.get(`/checkout/changeToAnonymousUser/${orderFormId}`)
-          .then(res => {
-            console.log('changeToAnonymousUser', {res})
-            setOrderForm({...orderForm, clientProfileData: null})
+          .then(() => {
+            window.location.reload()
           })
           .catch((err) => {
             console.error('changeToAnonymousUser', err.message)
@@ -56,9 +62,7 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
   const handleImpersonate = (email: string) => {
     setloadingImpersonate(true)
 
-    console.log('handleImpersonate', email)
-
-    axios.get('/api/checkout/pub/orderForm')
+    axios.get('/api/checkout/pub/orderForm?forceNewCart=true')
       .then(async res => {
         const { orderFormId } = res?.data
 
@@ -74,24 +78,19 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
             })
 
             if (profile?.data) {
-              console.log('profile', profile.data)
-
               const contactInformation = profile.data.contactInformation?.map((contact: any) => {
                 return {
                   id: contact.id
                 }
               })
 
-              console.log({contactInformation})
-
               await axios.post(`/api/checkout/pub/orderForm/${orderFormId}/attachments/shippingData`,
                 {
                   selectedAddresses: [],
                   contactInformation 
                 }
-              ).then(res => {
-                console.log('shippingData', {res})
-                setOrderForm(res.data)
+              ).then(() => {
+                window.location.reload()
               })
               .catch((err) => {
                 console.error('shippingData', err.message)

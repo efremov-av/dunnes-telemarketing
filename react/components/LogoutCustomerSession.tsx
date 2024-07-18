@@ -70,7 +70,7 @@ const LogoutCustomerSession = (props: Props) => {
   }
 
   const clientName = useMemo(() => getClientName(client), [client])
-  const renderHeader = useCallback(() => getHeader(mobile), [mobile])
+  const renderHeader = useCallback(() => getHeader(mobile), [mobile, client])
 
   return (
     <div className={`${handles.logout} ${mobile && 'w-50'}`}>
