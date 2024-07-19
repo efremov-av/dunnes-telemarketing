@@ -7,10 +7,8 @@ import { withSession } from 'vtex.render-runtime'
 import isMyVtex from '../utils/isMyVtex'
 import Telemarketing from './Telemarketing'
 import axios from 'axios'
-import { OrderForm } from 'vtex.order-manager'
 import { checkoutClient } from './../clients/checkout'
 
-const { useOrderForm } = OrderForm
 
 const { 
   createNewCart, 
@@ -26,21 +24,28 @@ interface Props {
 }
 
 const TelemarketingContainer: FC<Props> = ({session}) => {
+  const [impersonatedClient, setImpersonatedClient] = useState<Client | undefined>(undefined)
   const [emailInput, setEmailInput] = useState<string>('')
   const [loadingImpersonate, setloadingImpersonate] = useState<boolean>(false)
-
-  const { orderForm, setOrderForm, loading } = useOrderForm()
 
   useEffect(() => {
     axios.get('/api/checkout/pub/orderForm', { withCredentials: true })
     .then(res => {
-      setOrderForm(res.data)
+
+      const { clientProfileData } = res.data
+
+      setImpersonatedClient({
+        document: clientProfileData.document,
+        phone: clientProfileData.phone,
+        name: `${clientProfileData.firstName} ${clientProfileData.lastName}`,
+        email: clientProfileData.email
+      })
     })
   }, [])
 
   const processedSession = processSession(session)
 
-  if (!processedSession?.canImpersonate || loading) {
+  if (!processedSession?.canImpersonate) {
     return null
   }
 
@@ -107,13 +112,8 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
 
   let client: Client | undefined = undefined
 
-  if (orderForm?.clientProfileData?.email && attendantEmail !== orderForm.clientProfileData.email) {
-    client = {
-      document: orderForm.clientProfileData.document,
-      phone: orderForm.clientProfileData.phone,
-      name: `${orderForm.clientProfileData.firstName} ${orderForm.clientProfileData.lastName}`,
-      email: orderForm.clientProfileData.email
-    }
+  if (impersonatedClient?.email && attendantEmail !== impersonatedClient.email) {
+    client = impersonatedClient
   }
 
   return (
