@@ -8,8 +8,17 @@ import isMyVtex from '../utils/isMyVtex'
 import Telemarketing from './Telemarketing'
 import axios from 'axios'
 import { OrderForm } from 'vtex.order-manager'
+import { checkoutClient } from './../clients/checkout'
 
 const { useOrderForm } = OrderForm
+
+const { 
+  createNewCart, 
+  changeToAnonymousUser, 
+  attachClientProfileData, 
+  attachShippingData, 
+  getProfile 
+} = checkoutClient
 
 interface Props {
   /** Query with the session */
@@ -42,11 +51,11 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
   const handleDepersonify = () => {
     setloadingImpersonate(true)
 
-    axios.get('/api/checkout/pub/orderForm?forceNewCart=true')
+    createNewCart()
       .then(async res => {
         const { orderFormId } = res?.data
 
-        await axios.get(`/checkout/changeToAnonymousUser/${orderFormId}`)
+        await changeToAnonymousUser(orderFormId)
           .then(() => {
             window.location.reload()
           })
@@ -62,20 +71,13 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
   const handleImpersonate = (email: string) => {
     setloadingImpersonate(true)
 
-    axios.get('/api/checkout/pub/orderForm?forceNewCart=true')
+    createNewCart()
       .then(async res => {
         const { orderFormId } = res?.data
 
-        await axios.post(`/api/checkout/pub/orderForm/${orderFormId}/attachments/clientProfileData`, 
-          {
-          email
-          })
+        await attachClientProfileData(orderFormId, email)
           .then(async () => {
-            const profile = await axios.get('/api/checkout/pub/profiles', {
-              params: {
-                email
-              }
-            })
+            const profile = await getProfile(email)
 
             if (profile?.data) {
               const contactInformation = profile.data.contactInformation?.map((contact: any) => {
@@ -84,12 +86,7 @@ const TelemarketingContainer: FC<Props> = ({session}) => {
                 }
               })
 
-              await axios.post(`/api/checkout/pub/orderForm/${orderFormId}/attachments/shippingData`,
-                {
-                  selectedAddresses: [],
-                  contactInformation 
-                }
-              ).then(() => {
+              await attachShippingData(orderFormId, contactInformation).then(() => {
                 window.location.reload()
               })
               .catch((err) => {
