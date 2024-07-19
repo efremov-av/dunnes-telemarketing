@@ -1,31 +1,51 @@
-import { compose, path } from 'ramda'
-import React, { FC, useState } from 'react'
+import { compose } from 'ramda'
+import React, { FC, useEffect, useState } from 'react'
 import { graphql } from 'react-apollo'
-import { withSession } from 'vtex.render-runtime'
 import sessionQuery from 'vtex.store-resources/QuerySession'
-
-import depersonifyMutation from '../mutations/depersonify.gql'
-import impersonateMutation from '../mutations/impersonate.gql'
-import isMyVtex from '../utils/isMyVtex'
 import processSession from '../utils/processSession'
+import { withSession } from 'vtex.render-runtime'
+import isMyVtex from '../utils/isMyVtex'
 import Telemarketing from './Telemarketing'
+import axios from 'axios'
+import { checkoutClient } from './../clients/checkout'
+
+
+const { 
+  createNewCart, 
+  changeToAnonymousUser, 
+  attachClientProfileData, 
+  attachShippingData, 
+  getProfile 
+} = checkoutClient
 
 interface Props {
   /** Query with the session */
   session?: Session
-  /** Mutation to depersonify */
-  depersonify: () => Promise<void>
-  /** Mutation to impersonate a customer */
-  impersonate: (s: {}) => Promise<void>
 }
 
-const TelemarketingContainer: FC<Props> = ({ depersonify, impersonate, session }) => {
+const TelemarketingContainer: FC<Props> = ({session}) => {
+  const [impersonatedClient, setImpersonatedClient] = useState<Client | undefined>(undefined)
   const [emailInput, setEmailInput] = useState<string>('')
   const [loadingImpersonate, setloadingImpersonate] = useState<boolean>(false)
 
+  useEffect(() => {
+    axios.get('/api/checkout/pub/orderForm', { withCredentials: true })
+    .then(res => {
+
+      const { clientProfileData } = res.data
+
+      setImpersonatedClient({
+        document: clientProfileData.document,
+        phone: clientProfileData.phone,
+        name: `${clientProfileData.firstName} ${clientProfileData.lastName}`,
+        email: clientProfileData.email
+      })
+    })
+  }, [])
+
   const processedSession = processSession(session)
 
-  if (!session || !processedSession || !processedSession.canImpersonate) {
+  if (!processedSession?.canImpersonate) {
     return null
   }
 
@@ -35,31 +55,66 @@ const TelemarketingContainer: FC<Props> = ({ depersonify, impersonate, session }
 
   const handleDepersonify = () => {
     setloadingImpersonate(true)
-    depersonify()
-      .then(response => {
-        const depersonifyData = path(['data', 'depersonify'], response)
-        !!depersonifyData && session.refetch()
-        window.location.reload()
+
+    createNewCart()
+      .then(async res => {
+        const { orderFormId } = res?.data
+
+        await changeToAnonymousUser(orderFormId)
+          .then(() => {
+            window.location.reload()
+          })
+          .catch((err) => {
+            console.error('changeToAnonymousUser', err.message)
+          })
       })
-      .catch(() => setloadingImpersonate(false))
+      .finally(() => {
+        setloadingImpersonate(false)
+      })
   }
 
   const handleImpersonate = (email: string) => {
     setloadingImpersonate(true)
-    const variables = { email }
-    impersonate({ variables })
-      .then(response => {
-        const profile = path(
-          ['data', 'impersonate', 'impersonate', 'profile'],
-          response
-        )
-        !!profile && session.refetch()
-        window.location.reload()
+
+    createNewCart()
+      .then(async res => {
+        const { orderFormId } = res?.data
+
+        await attachClientProfileData(orderFormId, email)
+          .then(async () => {
+            const profile = await getProfile(email)
+
+            if (profile?.data) {
+              const contactInformation = profile.data.contactInformation?.map((contact: any) => {
+                return {
+                  id: contact.id
+                }
+              })
+
+              await attachShippingData(orderFormId, contactInformation).then(() => {
+                window.location.reload()
+              })
+              .catch((err) => {
+                console.error('shippingData', err.message)
+              })
+            }
+          })
       })
-      .catch(() => setloadingImpersonate(false))
+      .catch((err) => {
+        console.error('clientProfileData', err.message)
+      })
+      .finally(() => {
+        setloadingImpersonate(false)
+      })
   }
 
-  const { client, attendantEmail } = processedSession
+  const { attendantEmail } = processedSession
+
+  let client: Client | undefined = undefined
+
+  if (impersonatedClient?.email && attendantEmail !== impersonatedClient.email) {
+    client = impersonatedClient
+  }
 
   return (
     <Telemarketing
@@ -85,8 +140,6 @@ const options = {
 const EnhancedTelemarketing = withSession({ loading: React.Fragment })(
   compose(
     graphql(sessionQuery, options),
-    graphql(depersonifyMutation, { name: 'depersonify' }),
-    graphql(impersonateMutation, { name: 'impersonate' }),
   )(TelemarketingContainer as any)
 )
 
